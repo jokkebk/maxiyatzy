@@ -7,7 +7,7 @@ SOLVER := $(COMMON) src/solver.cpp
 
 .PHONY: all test bench clean
 
-all: $(BUILD)/maxiyatzy-info $(BUILD)/maxiyatzy-tests $(BUILD)/maxiyatzy-bench $(BUILD)/maxiyatzy-solve $(BUILD)/maxiyatzy-inspect $(BUILD)/maxiyatzy-verify
+all: $(BUILD)/maxiyatzy-info $(BUILD)/maxiyatzy-tests $(BUILD)/maxiyatzy-bench $(BUILD)/maxiyatzy-solve $(BUILD)/maxiyatzy-inspect $(BUILD)/maxiyatzy-verify $(BUILD)/maxiyatzy-advise
 
 $(BUILD):
 	mkdir -p $@
@@ -29,6 +29,9 @@ $(BUILD)/maxiyatzy-inspect: src/inspect_main.cpp | $(BUILD)
 
 # Independent table verifier; deliberately excludes solver.cpp/upper_states.cpp.
 $(BUILD)/maxiyatzy-verify: src/dice.cpp src/scoring.cpp verify/verify_main.cpp | $(BUILD)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
+
+$(BUILD)/maxiyatzy-advise: $(COMMON) src/policy.cpp src/advise_main.cpp | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 test: $(BUILD)/maxiyatzy-tests
