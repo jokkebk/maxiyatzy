@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maxi Yatzy</title>
+<meta name="theme-color" content="#cbc3b4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chewy&family=Caveat:wght@500;700&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="app">
+  <section class="paper" id="card"></section>
+  <nav class="footer">
+    <button id="undo-button" class="quiet" hidden>peru</button>
+    <span class="footer-spacer"></span>
+    <button id="new-game-button" class="quiet">uusi peli</button>
+  </nav>
+</main>
+
+<div id="action-bar" hidden>
+  <button id="assist-button"></button>
+</div>
+
+<div id="sheet-backdrop" hidden></div>
+<section id="sheet" hidden></section>
+
+<div id="setup" hidden>
+  <div class="setup-paper">
+    <h1 class="logo">maxi<span>Yatzy</span></h1>
+    <p class="setup-hint">Pelaajat — valitse ✨ niille, jotka haluavat apurin.</p>
+    <div id="setup-players"></div>
+    <div class="setup-actions">
+      <button id="add-player" class="quiet">+ pelaaja</button>
+      <button id="start-game">Aloita peli</button>
+    </div>
+    <p id="table-status" class="table-status"></p>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

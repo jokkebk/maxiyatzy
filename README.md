@@ -18,6 +18,17 @@ with its own score bookkeeping. Method and results are in
 The planned fast-compute/compact-storage design is documented in
 [`docs/architecture.md`](docs/architecture.md).
 
+Two interactive front-ends use the solved table via a shared policy module
+([`src/policy.cpp`](src/policy.cpp), mmap + lazy per-mask decode):
+
+- `maxiyatzy-advise` — a text-mode advisor that walks one scorecard through a
+  game, recommending keeps and categories and pricing any deviation:
+  `./build/maxiyatzy-advise --table maxiyatzy-values.mytz`
+- [`web/`](web/) — a static, mobile-friendly scorekeeper where selected
+  players get optimal-play hints. It needs no server process: the table is
+  read with HTTP range requests from any static host (see
+  [`web/README.md`](web/README.md)).
+
 ## Rules encoded
 
 - Small straight: `1-2-3-4-5`, with the sixth die ignored.
