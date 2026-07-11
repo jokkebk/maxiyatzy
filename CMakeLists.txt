@@ -28,5 +28,11 @@ target_link_libraries(maxiyatzy-solve PRIVATE maxiyatzy)
 
 add_executable(maxiyatzy-inspect src/inspect_main.cpp)
 
+# Independent table verifier; deliberately excludes solver.cpp/upper_states.cpp.
+add_executable(maxiyatzy-verify verify/verify_main.cpp src/dice.cpp src/scoring.cpp)
+target_include_directories(maxiyatzy-verify PRIVATE include)
+find_package(Threads REQUIRED)
+target_link_libraries(maxiyatzy-verify PRIVATE Threads::Threads)
+
 enable_testing()
 add_test(NAME maxiyatzy-tests COMMAND maxiyatzy-tests)

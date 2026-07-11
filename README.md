@@ -9,6 +9,12 @@ keeper enumeration, upper-state analysis, parallel backward solver, compact
 lookup writer and verifier, and a solver-kernel benchmark. The first complete
 result is recorded in [`docs/results-v1.md`](docs/results-v1.md).
 
+The v1 table has been audited by an independent verifier
+([`verify/`](verify/)) that re-derives sampled values by one-step backward
+induction and reproduces the initial expected value by playing complete games
+with its own score bookkeeping. Method and results are in
+[`docs/verification-v1.md`](docs/verification-v1.md).
+
 The planned fast-compute/compact-storage design is documented in
 [`docs/architecture.md`](docs/architecture.md).
 
