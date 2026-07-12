@@ -626,6 +626,28 @@ document.addEventListener('click', event => {
   }
 });
 
+// physical keyboard for the manual numpad (desktop): digits build the number,
+// Enter confirms, Backspace deletes, Escape cancels. Quick-select chips still work.
+document.addEventListener('keydown', event => {
+  if (!manual) return;
+  const k = event.key;
+  if (k >= '0' && k <= '9') {
+    if (manual.typed.length < 3) manual.typed += k;
+    renderManualSheet();
+  } else if (k === 'Backspace') {
+    manual.typed = manual.typed.slice(0, -1);
+    renderManualSheet();
+  } else if (k === 'Enter') {
+    if (manual.typed !== '') fillScore(manual.player, manual.cat, Number(manual.typed));
+  } else if (k === 'Escape') {
+    hideSheet();
+    manual = null;
+  } else {
+    return;
+  }
+  event.preventDefault();
+});
+
 $('sheet-backdrop').addEventListener('click', () => {
   hideSheet();
   manual = null;
