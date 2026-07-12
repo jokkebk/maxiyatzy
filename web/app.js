@@ -195,8 +195,9 @@ function render() {
     game.players.forEach((p, i) => {
       const value = p.card[cat];
       const open = value === null;
-      html += `<div class="cell${open ? ' open' : ''}${i === active ? ' col-active' : ''}"
-        ${open ? `data-player="${i}" data-cat="${cat}" data-action="enter"` : ''}>
+      // filled cells stay tappable so a mis-entered score can be corrected
+      html += `<div class="cell ${open ? 'open' : 'filled'}${i === active ? ' col-active' : ''}"
+        data-player="${i}" data-cat="${cat}" data-action="enter">
         ${cellScore(value)}</div>`;
     });
   };
@@ -259,13 +260,16 @@ function openManualEntry(playerIndex, cat) {
 
 function renderManualSheet() {
   const p = game.players[manual.player];
+  const current = p.card[manual.cat];
+  const editing = current !== null;   // correcting an existing score
   const values = validScores(manual.cat);
   const chips = values.length <= 10
     ? `<div class="chips">${values.map(v =>
         `<button data-action="chip" data-value="${v}">${v === 0 ? '—' : v}</button>`).join('')}</div>`
     : '';
   $('sheet').innerHTML = `
-    <div class="sheet-title"><span class="who">${escapeHtml(p.name)}</span> ${FI[manual.cat]}</div>
+    <div class="sheet-title"><span class="who">${escapeHtml(p.name)}</span> ${FI[manual.cat]}${
+      editing ? ` <span class="sheet-current">nyt ${current === 0 ? '—' : current}</span>` : ''}</div>
     ${chips}
     <div class="entry-display">${manual.typed || '&nbsp;'}</div>
     <div class="numpad">
@@ -276,6 +280,7 @@ function renderManualSheet() {
     </div>
     <div class="sheet-actions">
       <button class="secondary" data-action="cancel">Peruuta</button>
+      ${editing ? `<button class="secondary" data-action="clear">Tyhjennä</button>` : ''}
       <button data-action="confirm-manual">Merkitse</button>
     </div>`;
 }
@@ -289,6 +294,8 @@ function manualAction(action, target) {
     renderManualSheet();
   } else if (action === 'cross') {
     fillScore(manual.player, manual.cat, 0);
+  } else if (action === 'clear') {
+    fillScore(manual.player, manual.cat, null);   // blank the cell back to open
   } else if (action === 'chip') {
     fillScore(manual.player, manual.cat, Number(target.dataset.value));
   } else if (action === 'confirm-manual') {

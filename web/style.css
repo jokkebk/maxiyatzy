@@ -151,6 +151,9 @@ body {
 
 .cell.open { cursor: pointer; }
 .cell.open:active { background: var(--stamp-soft); }
+/* filled cells stay tappable to correct a score */
+.cell.filled { cursor: pointer; }
+.cell.filled:active { background: var(--stamp-soft); }
 
 .rule-row .cell {
   border-top: 2px solid var(--ink);
@@ -233,6 +236,7 @@ button:active { transform: translateY(1px); }
 
 .sheet-title { font-weight: 600; font-size: 0.95rem; letter-spacing: 0.06em; margin-bottom: 0.7rem; }
 .sheet-title .who { font-family: 'Caveat', cursive; font-size: 1.3rem; color: var(--pencil); margin-right: 0.3rem; }
+.sheet-title .sheet-current { color: var(--faint); font-size: 0.8rem; font-weight: 500; margin-left: 0.4rem; }
 .sheet-sub { font-size: 0.8rem; color: var(--faint); margin: -0.5rem 0 0.7rem; }
 
 .dice-line { display: flex; gap: 0.45rem; justify-content: center; min-height: 46px; margin: 0.4rem 0 0.8rem; flex-wrap: wrap; }
