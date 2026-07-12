@@ -181,7 +181,7 @@ function render() {
   const best = Math.max(...totals);
 
   let html = `<div class="card-logo"><span class="logo">maxi<span>Yatzy</span></span></div>`;
-  html += `<div class="grid" style="grid-template-columns:minmax(8rem,2.2fr) repeat(${n},minmax(2.4rem,1fr))">`;
+  html += `<div class="grid" style="grid-template-columns:minmax(8.6rem,2.45fr) repeat(${n},minmax(2.3rem,1fr))">`;
 
   html += `<div class="cell head"></div>`;
   game.players.forEach((p, i) => {
