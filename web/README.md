@@ -37,9 +37,15 @@ hints are disabled.
 
 ## Local testing
 
+Run from the **repo root** (not from `web/`), so the `web` path below is the
+served directory:
+
 ```sh
 npx http-server web -c-1      # supports ranges, disables caching
+bunx http-server web -c-1     # same, via bun
 ```
+
+From inside `web/` use `bunx http-server . -c-1` instead.
 
 Note that `python3 -m http.server` does **not** support range requests — the
 app still works via the full-download fallback, but expect a 141 MiB load.
