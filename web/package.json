@@ -1,0 +1,10 @@
+{
+  "name": "maxiyatzy-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static Maxi Yatzy scorekeeper. package.json only marks the .js files as ES modules for Node-based tests; static hosts ignore it.",
+  "scripts": {
+    "crosscheck": "node test/crosscheck.mjs"
+  }
+}

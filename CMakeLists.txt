@@ -32,6 +32,9 @@ add_executable(maxiyatzy-inspect src/inspect_main.cpp)
 add_executable(maxiyatzy-advise src/advise_main.cpp)
 target_link_libraries(maxiyatzy-advise PRIVATE maxiyatzy)
 
+add_executable(maxiyatzy-crosscheck src/crosscheck_main.cpp)
+target_link_libraries(maxiyatzy-crosscheck PRIVATE maxiyatzy)
+
 # Independent table verifier; deliberately excludes solver.cpp/upper_states.cpp.
 add_executable(maxiyatzy-verify verify/verify_main.cpp src/dice.cpp src/scoring.cpp)
 target_include_directories(maxiyatzy-verify PRIVATE include)

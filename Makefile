@@ -7,7 +7,7 @@ SOLVER := $(COMMON) src/solver.cpp
 
 .PHONY: all test bench clean
 
-all: $(BUILD)/maxiyatzy-info $(BUILD)/maxiyatzy-tests $(BUILD)/maxiyatzy-bench $(BUILD)/maxiyatzy-solve $(BUILD)/maxiyatzy-inspect $(BUILD)/maxiyatzy-verify $(BUILD)/maxiyatzy-advise
+all: $(BUILD)/maxiyatzy-info $(BUILD)/maxiyatzy-tests $(BUILD)/maxiyatzy-bench $(BUILD)/maxiyatzy-solve $(BUILD)/maxiyatzy-inspect $(BUILD)/maxiyatzy-verify $(BUILD)/maxiyatzy-advise $(BUILD)/maxiyatzy-crosscheck
 
 $(BUILD):
 	mkdir -p $@
@@ -32,6 +32,9 @@ $(BUILD)/maxiyatzy-verify: src/dice.cpp src/scoring.cpp verify/verify_main.cpp |
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 $(BUILD)/maxiyatzy-advise: $(COMMON) src/policy.cpp src/advise_main.cpp | $(BUILD)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
+
+$(BUILD)/maxiyatzy-crosscheck: $(COMMON) src/policy.cpp src/crosscheck_main.cpp | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 test: $(BUILD)/maxiyatzy-tests
