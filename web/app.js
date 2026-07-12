@@ -520,6 +520,7 @@ function assistAction(action, target) {
 // ---------- shared ----------
 
 function fillScore(playerIndex, cat, score) {
+  const wasOpen = game.players[playerIndex].card[cat] === null;
   pushUndo();
   game.players[playerIndex].card[cat] = score;
   save();
@@ -527,6 +528,12 @@ function fillScore(playerIndex, cat, score) {
   manual = null;
   assist = null;
   render();
+  // completing a turn (filling a previously-open cell) rolls straight into the
+  // next assisted/peek player's dice entry, so nobody taps "syötä nopat"
+  if (wasOpen && score !== null) {
+    const next = activePlayerIndex();
+    if (next !== -1 && game.players[next].mode !== 'pen') startAssistTurn(next);
+  }
 }
 
 function showSheet() {
