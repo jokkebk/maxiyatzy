@@ -62,15 +62,41 @@ function questionSvg(size) {
 function diceRow(cat) {
   if (cat === 19) return `<span class="logo" style="font-size:0.95rem">maxi<span style="font-size:1.1rem">Yatzy</span></span>`;
   const faces = ROW_DICE[cat];
-  const size = 15;
+  const size = 17;
   if (!faces) return `<span class="dice-row">${questionSvg(size).repeat(6)}</span>`;
-  return `<span class="dice-row">${faces.map(f => dieSvg(f, size)).join('')}</span>`;
+  // cluster consecutive equal faces so combos read as distinct groups
+  // (full house = 3+2, two pairs = 2+2, …); straights stay one flat run.
+  const groups = [];
+  for (const f of faces) {
+    const last = groups[groups.length - 1];
+    if (last && last[0] === f) last.push(f);
+    else groups.push([f]);
+  }
+  const clustered = groups.length > 1 && groups.some(g => g.length > 1);
+  if (!clustered)
+    return `<span class="dice-row">${faces.map(f => dieSvg(f, size)).join('')}</span>`;
+  return `<span class="dice-row grouped">${groups.map(g =>
+    `<span class="dice-group">${g.map(f => dieSvg(f, size)).join('')}</span>`).join('')}</span>`;
 }
 
 function diceText(counts) {
   const out = [];
   for (let f = 0; f < 6; f++) for (let i = 0; i < counts[f]; i++) out.push(f + 1);
   return out.join(' ');
+}
+
+// small dice-row illustration for a hint option: the whole rolled hand with
+// that option's kept dice highlighted, so a suggestion reads as a picture
+// instead of a run of digits.
+function miniHandRow(counts, keepCounts, size) {
+  const marked = [...keepCounts];
+  let html = '';
+  for (let f = 0; f < 6; f++)
+    for (let i = 0; i < counts[f]; i++) {
+      const kept = marked[f] > i;
+      html += dieSvg(f + 1, size, `mini-die${kept ? ' kept' : ''}`);
+    }
+  return `<span class="mini-hand">${html}</span>`;
 }
 
 // ---------- game state helpers ----------
@@ -155,7 +181,7 @@ function render() {
   const best = Math.max(...totals);
 
   let html = `<div class="card-logo"><span class="logo">maxi<span>Yatzy</span></span></div>`;
-  html += `<div class="grid" style="grid-template-columns:minmax(7.2rem,1.3fr) repeat(${n},1fr)">`;
+  html += `<div class="grid" style="grid-template-columns:minmax(8rem,2.2fr) repeat(${n},minmax(2.4rem,1fr))">`;
 
   html += `<div class="cell head"></div>`;
   game.players.forEach((p, i) => {
@@ -203,6 +229,7 @@ function render() {
 
   card.innerHTML = html;
   $('undo-button').hidden = undoStack.length === 0;
+  $('add-player-button').hidden = n >= 6;
 
   const bar = $('action-bar');
   if (!over && game.players[active].mode !== 'pen') {
@@ -363,18 +390,24 @@ function renderAssistSheet() {
       const selId = diceId(assist.selection);
       const selEv = assist.eval.keepValue(selId, assist.rerollsLeft);
       const selIsBest = selId === options[0].id;
-      const altHtml = options.slice(1).map(o =>
-        `<div class="hint-line">${o.counts.reduce((a, b) => a + b, 0) === 6
-          ? 'pysähdy tähän' : `pidä ${diceText(o.counts)}`}
-          <span class="ev">(${(o.ev - bestEv).toFixed(2)})</span></div>`).join('');
-      const bestLabel = options[0].counts.reduce((a, b) => a + b, 0) === 6
-        ? 'kannattaa pysähtyä tähän'
-        : `pidä ${diceText(options[0].counts)}`;
-      hintHtml = `<div class="hint-line hint-best">✨ ${bestLabel}
-          <span class="ev">EV ${(grandTotalOf(game.players[assist.player].card) + bestEv).toFixed(1)}</span></div>
-        ${altHtml}
-        ${selIsBest ? '' : `<div class="hint-line">valintasi ${diceText(assist.selection) || 'ei mitään'}
-          <span class="ev">(${(selEv - bestEv).toFixed(2)})</span></div>`}`;
+      const expected = grandTotalOf(game.players[assist.player].card);
+      const isStop = o => o.counts.reduce((a, b) => a + b, 0) === 6;
+
+      const bestHtml = `<button class="hint-line hint-best hint-option"
+          data-action="apply-option" data-counts="${options[0].counts.join(',')}">
+          ${miniHandRow(counts, options[0].counts, 26)}
+          <span class="hint-label">✨ ${isStop(options[0]) ? 'pysähdy tähän' : 'paras valinta'}</span>
+          <span class="ev">EV ${(expected + bestEv).toFixed(1)}</span></button>`;
+      const altHtml = options.slice(1).map(o => `<button class="hint-line hint-option"
+          data-action="apply-option" data-counts="${o.counts.join(',')}">
+          ${miniHandRow(counts, o.counts, 22)}
+          ${isStop(o) ? '<span class="hint-label">pysähdy tähän</span>' : ''}
+          <span class="ev">${(o.ev - bestEv).toFixed(2)}</span></button>`).join('');
+      const selHtml = selIsBest ? '' : `<div class="hint-line">
+          ${miniHandRow(counts, assist.selection, 22)}
+          <span class="hint-label">valintasi</span>
+          <span class="ev">${(selEv - bestEv).toFixed(2)}</span></div>`;
+      hintHtml = `${bestHtml}${altHtml}${selHtml}`;
     } else {
       hintHtml = `<div class="hint-line hint-hidden">napauta pidettävät nopat itse</div>
         <button class="secondary peek-btn" data-action="reveal">👁 kurkista vinkki</button>`;
@@ -454,6 +487,9 @@ function assistAction(action, target) {
     if (kept) assist.selection[f]--;
     else if (assist.selection[f] < rollCounts()[f]) assist.selection[f]++;
     renderAssistSheet();
+  } else if (action === 'apply-option') {
+    assist.selection = target.dataset.counts.split(',').map(Number);
+    assistAction('reroll', target);
   } else if (action === 'reroll') {
     const total = assist.selection.reduce((a, b) => a + b, 0);
     if (total === 6) { assist.phase = 'category'; assist.revealed = false; renderAssistSheet(); return; }
@@ -498,12 +534,22 @@ function hideSheet() {
 
 // ---------- setup ----------
 
-function openSetup() {
-  const previous = game ? game.players : (load()?.players ?? []);
-  const players = previous.length
-    ? previous.map(p => ({ name: p.name, mode: normalizeMode(p) }))
-    : [{ name: '', mode: 'pen' }, { name: '', mode: 'pen' }];
+// keepScores: adding players mid-game — carry each existing card through the
+// setup dataset so confirming preserves scores instead of starting fresh.
+function openSetup({ keepScores = false } = {}) {
+  let players;
+  if (keepScores && game) {
+    players = game.players.map(p => ({ name: p.name, mode: normalizeMode(p), card: p.card }));
+    players.push({ name: '', mode: 'pen' });   // ready to fill in the newcomer
+  } else {
+    const previous = game ? game.players : (load()?.players ?? []);
+    players = previous.length
+      ? previous.map(p => ({ name: p.name, mode: normalizeMode(p) }))
+      : [{ name: '', mode: 'pen' }, { name: '', mode: 'pen' }];
+  }
   renderSetup(players);
+  $('setup-title').textContent = keepScores ? 'Lisää pelaaja' : 'Pelaajat';
+  $('start-game').textContent = keepScores ? 'Jatka' : 'Aloita peli';
   $('setup').hidden = false;
 }
 
@@ -590,7 +636,9 @@ $('undo-button').addEventListener('click', () => {
   render();
 });
 
-$('new-game-button').addEventListener('click', openSetup);
+$('new-game-button').addEventListener('click', () => openSetup());
+
+$('add-player-button').addEventListener('click', () => openSetup({ keepScores: true }));
 
 $('add-player').addEventListener('click', () => {
   const players = setupPlayers();
@@ -599,15 +647,18 @@ $('add-player').addEventListener('click', () => {
 });
 
 $('start-game').addEventListener('click', () => {
-  const players = setupPlayers()
-    .map((p, i) => ({
-      name: p.name.trim() || `Pelaaja ${i + 1}`,
-      mode: p.mode,
-      card: Array(CATEGORY_COUNT).fill(null),
-    }));
+  const rows = setupPlayers();
+  // keepScores mode carries a card through the dataset; a fresh game does not
+  const keeping = rows.some(p => Array.isArray(p.card));
+  const players = rows.map((p, i) => ({
+    name: p.name.trim() || `Pelaaja ${i + 1}`,
+    mode: p.mode,
+    card: Array.isArray(p.card) ? p.card : Array(CATEGORY_COUNT).fill(null),
+  }));
   if (!players.length) return;
+  if (keeping) pushUndo();            // adding mid-game stays undoable
+  else undoStack = [];
   game = { players };
-  undoStack = [];
   save();
   $('setup').hidden = true;
   render();
