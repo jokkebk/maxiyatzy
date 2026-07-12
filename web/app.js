@@ -529,10 +529,11 @@ function fillScore(playerIndex, cat, score) {
   assist = null;
   render();
   // completing a turn (filling a previously-open cell) rolls straight into the
-  // next assisted/peek player's dice entry, so nobody taps "syötä nopat"
+  // next ✨ apuri player's dice entry, so nobody taps "syötä nopat". Peek mode
+  // is left manual — it's a lighter, on-demand hint.
   if (wasOpen && score !== null) {
     const next = activePlayerIndex();
-    if (next !== -1 && game.players[next].mode !== 'pen') startAssistTurn(next);
+    if (next !== -1 && game.players[next].mode === 'assist') startAssistTurn(next);
   }
 }
 
