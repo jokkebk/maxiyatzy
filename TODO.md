@@ -2,20 +2,11 @@
 
 ## Web scorekeeper
 
-- **Assist toggle discoverability.** Switching a player between pencil and
-  assisted mode currently means tapping the player's name in the card header,
-  which is easy to miss. Give it a visible control (e.g. a small ✨ button in
-  the header cell), and consider a third per-player mode where hints are
-  hidden behind a tap ("on-demand") so players can peek only when they want.
-- **Automated JS-vs-C++ engine cross-check.** `web/engine.js` is a hand port
-  of `src/policy.cpp`. The root value (383.3) and first-turn hints were
-  checked by hand in the browser; add a scripted test (e.g. Node) that
-  replays a few hundred sampled states through both engines and compares
-  keep/category rankings and EVs.
 - **Mid-turn state is not persisted.** Refreshing during an assisted turn
-  loses the entered dice (the scorecard itself is safe in localStorage).
-- **Undo granularity.** Undo reverts whole fills; it cannot step back within
-  an assisted turn.
+  loses the entered dice. The scorecard and undo history are safe in
+  localStorage, so this is deliberately out of scope for now.
+- **Undo granularity.** Undo reverts whole fills (turn level) and now
+  survives a reload; it still cannot step back within an assisted turn.
 - **Offline/PWA mode.** Cache the app shell and store fetched table slices
   (or the whole table on demand) in the Cache API/IndexedDB so a phone works
   without connectivity at the summer cottage.
@@ -27,8 +18,6 @@
 
 ## CLI advisor
 
-- The `keep` override recomputes the full option list twice per command;
-  harmless but sloppy.
 - Consider a `sim` command that finishes the game automatically from the
   current position to show the expected distribution, and an `ev <category>`
   query.

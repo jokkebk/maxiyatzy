@@ -95,14 +95,26 @@ function activePlayerIndex() {
   return min >= CATEGORY_COUNT ? -1 : index;
 }
 
+// per-player play modes, cycled by the header/setup buttons
+const MODES = ['pen', 'assist', 'peek'];
+const MODE_LABEL = { pen: 'kynä', assist: '✨ apuri', peek: '👁 kurkista' };
+const nextMode = m => MODES[(MODES.indexOf(m) + 1) % MODES.length];
+// tolerate the older { assist: bool } shape saved before modes existed
+const normalizeMode = p => p.mode ?? (p.assist ? 'assist' : 'pen');
+
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ players: game.players }));
+  localStorage.setItem(STORAGE_KEY,
+    JSON.stringify({ players: game.players, undo: undoStack }));
 }
 
 function load() {
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (data && Array.isArray(data.players) && data.players.length) return data;
+    if (data && Array.isArray(data.players) && data.players.length) {
+      data.players.forEach(p => { p.mode = normalizeMode(p); delete p.assist; });
+      data.undo = Array.isArray(data.undo) ? data.undo : [];
+      return data;
+    }
   } catch { /* corrupt storage: start fresh */ }
   return null;
 }
@@ -147,10 +159,9 @@ function render() {
 
   html += `<div class="cell head"></div>`;
   game.players.forEach((p, i) => {
-    html += `<div class="cell head${p.assist ? ' assisted' : ''}${i === active ? ' col-active' : ''}"
-      data-player="${i}" data-action="toggle-assist">
+    html += `<div class="cell head mode-${p.mode}${i === active ? ' col-active' : ''}">
       <span class="name">${escapeHtml(p.name)}</span>
-      <span class="mode">${p.assist ? '✨ apuri' : 'kynä'}</span></div>`;
+      <button class="mode-btn" data-player="${i}" data-action="cycle-mode">${MODE_LABEL[p.mode]}</button></div>`;
   });
 
   const row = (cat) => {
@@ -194,7 +205,7 @@ function render() {
   $('undo-button').hidden = undoStack.length === 0;
 
   const bar = $('action-bar');
-  if (!over && game.players[active].assist) {
+  if (!over && game.players[active].mode !== 'pen') {
     bar.hidden = false;
     $('assist-button').textContent = `🎲 ${game.players[active].name} — syötä nopat`;
     $('assist-button').dataset.player = active;
@@ -274,6 +285,8 @@ async function startAssistTurn(playerIndex) {
     if (!assist || assist.phase !== 'loading') return;
     assist = {
       player: playerIndex,
+      peek: p.mode === 'peek',
+      revealed: false,
       eval: evaluateTurn(t, mask, upperTotalOf(p.card)),
       rerollsLeft: 2,
       kept: [0, 0, 0, 0, 0, 0],
@@ -330,12 +343,7 @@ function renderAssistSheet() {
 
   if (assist.phase === 'hint') {
     const counts = rollCounts();
-    const fullId = diceId(counts);
-    const options = assist.eval.keepOptions(fullId, assist.rerollsLeft, 3);
-    const bestEv = options[0].ev;
-    const selId = diceId(assist.selection);
-    const selEv = assist.eval.keepValue(selId, assist.rerollsLeft);
-    const selIsBest = selId === options[0].id;
+    const reveal = !assist.peek || assist.revealed;
 
     // lay the roll out sorted; mark the first selection[f] dice of each face kept
     let diceHtml = '';
@@ -347,22 +355,34 @@ function renderAssistSheet() {
           ${dieSvg(f + 1, 42, `big-die${kept ? ' kept' : ''}`)}</span>`;
       }
 
-    const altHtml = options.slice(1).map(o =>
-      `<div class="hint-line">${o.counts.reduce((a, b) => a + b, 0) === 6
-        ? 'pysähdy tähän' : `pidä ${diceText(o.counts)}`}
-        <span class="ev">(${(o.ev - bestEv).toFixed(2)})</span></div>`).join('');
-
-    const bestLabel = options[0].counts.reduce((a, b) => a + b, 0) === 6
-      ? 'kannattaa pysähtyä tähän'
-      : `pidä ${diceText(options[0].counts)}`;
+    let hintHtml;
+    if (reveal) {
+      const fullId = diceId(counts);
+      const options = assist.eval.keepOptions(fullId, assist.rerollsLeft, 3);
+      const bestEv = options[0].ev;
+      const selId = diceId(assist.selection);
+      const selEv = assist.eval.keepValue(selId, assist.rerollsLeft);
+      const selIsBest = selId === options[0].id;
+      const altHtml = options.slice(1).map(o =>
+        `<div class="hint-line">${o.counts.reduce((a, b) => a + b, 0) === 6
+          ? 'pysähdy tähän' : `pidä ${diceText(o.counts)}`}
+          <span class="ev">(${(o.ev - bestEv).toFixed(2)})</span></div>`).join('');
+      const bestLabel = options[0].counts.reduce((a, b) => a + b, 0) === 6
+        ? 'kannattaa pysähtyä tähän'
+        : `pidä ${diceText(options[0].counts)}`;
+      hintHtml = `<div class="hint-line hint-best">✨ ${bestLabel}
+          <span class="ev">EV ${(grandTotalOf(game.players[assist.player].card) + bestEv).toFixed(1)}</span></div>
+        ${altHtml}
+        ${selIsBest ? '' : `<div class="hint-line">valintasi ${diceText(assist.selection) || 'ei mitään'}
+          <span class="ev">(${(selEv - bestEv).toFixed(2)})</span></div>`}`;
+    } else {
+      hintHtml = `<div class="hint-line hint-hidden">napauta pidettävät nopat itse</div>
+        <button class="secondary peek-btn" data-action="reveal">👁 kurkista vinkki</button>`;
+    }
 
     $('sheet').innerHTML = `${head}
       <div class="dice-line">${diceHtml}</div>
-      <div class="hint-line hint-best">✨ ${bestLabel}
-        <span class="ev">EV ${(grandTotalOf(game.players[assist.player].card) + bestEv).toFixed(1)}</span></div>
-      ${altHtml}
-      ${selIsBest ? '' : `<div class="hint-line">valintasi ${diceText(assist.selection) || 'ei mitään'}
-        <span class="ev">(${(selEv - bestEv).toFixed(2)})</span></div>`}
+      ${hintHtml}
       <div class="sheet-actions">
         <button class="secondary" data-action="stop-here">Pysähdyn</button>
         <button data-action="reroll">Heitän loput</button>
@@ -375,19 +395,29 @@ function renderAssistSheet() {
     const fullId = diceId(counts);
     const options = assist.eval.categoryOptions(fullId, CATEGORY_COUNT);
     const bestEv = options[0].ev;
+    const bestCat = options[0].cat;
+    const reveal = !assist.peek || assist.revealed;
     let diceHtml = '';
     for (let f = 0; f < 6; f++)
       for (let i = 0; i < counts[f]; i++) diceHtml += dieSvg(f + 1, 36, 'big-die');
+    // ranked with EV deltas when revealed; plain card order while hidden
+    const list = reveal ? options : [...options].sort((a, b) => a.cat - b.cat);
+    const buttons = list.map(o => {
+      const isBest = reveal && o.cat === bestCat;
+      const delta = !reveal ? '' : (isBest ? '✨ paras' : (o.ev - bestEv).toFixed(2));
+      return `<button data-action="fill" data-cat="${o.cat}" data-score="${o.score}"
+        class="${isBest ? 'best' : ''}">
+        <span class="opt-score">${o.score === 0 ? '—' : o.score}</span>
+        <span class="opt-name">${FI[o.cat]}</span>
+        <span class="opt-delta">${delta}</span>
+      </button>`;
+    }).join('');
+    const peekBtn = reveal ? ''
+      : `<button class="secondary peek-btn" data-action="reveal">👁 kurkista vinkki</button>`;
     $('sheet').innerHTML = `${head}
       <div class="dice-line">${diceHtml}</div>
-      <div class="option-list">
-        ${options.map((o, i) => `<button data-action="fill" data-cat="${o.cat}" data-score="${o.score}"
-          class="${i === 0 ? 'best' : ''}">
-          <span class="opt-score">${o.score === 0 ? '—' : o.score}</span>
-          <span class="opt-name">${FI[o.cat]}</span>
-          <span class="opt-delta">${i === 0 ? '✨ paras' : (o.ev - bestEv).toFixed(2)}</span>
-        </button>`).join('')}
-      </div>
+      ${peekBtn}
+      <div class="option-list">${buttons}</div>
       <div class="sheet-actions"><button class="secondary" data-action="cancel">Peruuta</button></div>`;
   }
 }
@@ -398,12 +428,18 @@ function assistAction(action, target) {
     if (assist.typed.length < 6 - keptCount()) {
       assist.typed.push(Number(target.dataset.face) - 1);
       if (assist.typed.length === 6 - keptCount()) {
+        assist.revealed = false;
         if (assist.rerollsLeft === 0) {
           assist.phase = 'category';
         } else {
           assist.phase = 'hint';
-          const options = assist.eval.keepOptions(diceId(rollCounts()), assist.rerollsLeft, 1);
-          assist.selection = [...options[0].counts];
+          if (assist.peek) {
+            // start from what the player already holds; don't preselect the optimum
+            assist.selection = [...assist.kept];
+          } else {
+            const options = assist.eval.keepOptions(diceId(rollCounts()), assist.rerollsLeft, 1);
+            assist.selection = [...options[0].counts];
+          }
         }
       }
       renderAssistSheet();
@@ -420,7 +456,7 @@ function assistAction(action, target) {
     renderAssistSheet();
   } else if (action === 'reroll') {
     const total = assist.selection.reduce((a, b) => a + b, 0);
-    if (total === 6) { assist.phase = 'category'; renderAssistSheet(); return; }
+    if (total === 6) { assist.phase = 'category'; assist.revealed = false; renderAssistSheet(); return; }
     assist.kept = [...assist.selection];
     assist.typed = [];
     assist.rerollsLeft--;
@@ -428,6 +464,10 @@ function assistAction(action, target) {
     renderAssistSheet();
   } else if (action === 'stop-here') {
     assist.phase = 'category';
+    assist.revealed = false;
+    renderAssistSheet();
+  } else if (action === 'reveal') {
+    assist.revealed = true;
     renderAssistSheet();
   } else if (action === 'fill') {
     fillScore(assist.player, Number(target.dataset.cat), Number(target.dataset.score));
@@ -461,8 +501,8 @@ function hideSheet() {
 function openSetup() {
   const previous = game ? game.players : (load()?.players ?? []);
   const players = previous.length
-    ? previous.map(p => ({ name: p.name, assist: p.assist }))
-    : [{ name: '', assist: false }, { name: '', assist: false }];
+    ? previous.map(p => ({ name: p.name, mode: normalizeMode(p) }))
+    : [{ name: '', mode: 'pen' }, { name: '', mode: 'pen' }];
   renderSetup(players);
   $('setup').hidden = false;
 }
@@ -471,8 +511,8 @@ function renderSetup(players) {
   $('setup-players').innerHTML = players.map((p, i) => `
     <div class="setup-row">
       <input type="text" placeholder="Pelaaja ${i + 1}" value="${escapeHtml(p.name)}" data-index="${i}">
-      <button class="assist-toggle${p.assist ? ' on' : ''}" data-action="setup-assist" data-index="${i}">
-        ${p.assist ? '✨ apuri' : 'kynä'}</button>
+      <button class="assist-toggle mode-${p.mode}${p.mode === 'pen' ? '' : ' on'}"
+        data-action="setup-mode" data-index="${i}">${MODE_LABEL[p.mode]}</button>
       ${players.length > 1 ? `<button class="remove" data-action="setup-remove" data-index="${i}">✕</button>` : ''}
     </div>`).join('');
   $('setup').dataset.players = JSON.stringify(players);
@@ -508,9 +548,9 @@ document.addEventListener('click', event => {
 
   if (action === 'enter') {
     openManualEntry(Number(target.dataset.player), Number(target.dataset.cat));
-  } else if (action === 'toggle-assist') {
+  } else if (action === 'cycle-mode') {
     const p = game.players[Number(target.dataset.player)];
-    p.assist = !p.assist;
+    p.mode = nextMode(p.mode);
     save();
     render();
   } else if (action === 'cancel') {
@@ -521,9 +561,10 @@ document.addEventListener('click', event => {
     manualAction(action, target);
   } else if (assist) {
     assistAction(action, target);
-  } else if (action === 'setup-assist') {
+  } else if (action === 'setup-mode') {
     const players = setupPlayers();
-    players[Number(target.dataset.index)].assist = !players[Number(target.dataset.index)].assist;
+    const p = players[Number(target.dataset.index)];
+    p.mode = nextMode(p.mode);
     renderSetup(players);
   } else if (action === 'setup-remove') {
     const players = setupPlayers();
@@ -553,7 +594,7 @@ $('new-game-button').addEventListener('click', openSetup);
 
 $('add-player').addEventListener('click', () => {
   const players = setupPlayers();
-  if (players.length < 6) players.push({ name: '', assist: false });
+  if (players.length < 6) players.push({ name: '', mode: 'pen' });
   renderSetup(players);
 });
 
@@ -561,7 +602,7 @@ $('start-game').addEventListener('click', () => {
   const players = setupPlayers()
     .map((p, i) => ({
       name: p.name.trim() || `Pelaaja ${i + 1}`,
-      assist: p.assist,
+      mode: p.mode,
       card: Array(CATEGORY_COUNT).fill(null),
     }));
   if (!players.length) return;
@@ -577,10 +618,11 @@ $('start-game').addEventListener('click', () => {
 {
   const saved = load();
   if (saved && saved.players.some(p => filledCount(p.card) < CATEGORY_COUNT)) {
-    game = saved;
+    game = { players: saved.players };
+    undoStack = saved.undo;               // keep undo working across a reload
     render();
   } else {
-    game = saved ?? null;
+    game = saved ? { players: saved.players } : null;
     if (game) render();
     openSetup();
   }
