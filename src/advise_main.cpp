@@ -205,14 +205,13 @@ int main(int argc, char** argv) {
                     auto parsed = parse_dice(line.substr(4), -1);
                     if (parsed && roll.contains(*parsed)) {
                         keep = *parsed;
-                        const double chosen = advisor.keep_options(roll, rerolls, 462)
-                            .front().ev;  // best for reference
-                        // find the EV of the chosen keep
+                        const auto all = advisor.keep_options(roll, rerolls, 462);
+                        const double best = all.front().ev;
                         double keep_ev = 0.0;
-                        for (const auto& o : advisor.keep_options(roll, rerolls, 462))
+                        for (const auto& o : all)
                             if (o.keep.encode() == keep.encode()) { keep_ev = o.ev; break; }
                         std::printf("keeping %s (EV %.1f, %+.2f vs best)\n",
-                                    dice_text(keep).c_str(), keep_ev, keep_ev - chosen);
+                                    dice_text(keep).c_str(), keep_ev, keep_ev - best);
                         continue;
                     }
                     std::printf("those dice are not in the roll\n");
