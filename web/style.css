@@ -12,6 +12,7 @@
   --stamp: #bc3f2b;
   --stamp-soft: #bc3f2b22;
   --highlight: #f3eeda;
+  --on-linen: #29251d;      /* text drawn on the table cloth, not on paper */
   font-size: 16px;
 }
 
@@ -21,6 +22,7 @@
     --linen-deep: #2b2822;
     --paper: #ece7da;
     --paper-edge: #d8d1bd;
+    --on-linen: #ded8c8;
   }
 }
 
@@ -64,7 +66,27 @@ body {
 }
 .logo span { font-size: 2.1rem; margin-left: 0.1em; }
 
-.card-logo { text-align: left; padding: 0.1rem 0 0.35rem 0.2rem; }
+/* logo plus the game-level controls, pinned to the top of the card */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0 0.4rem 0.2rem;
+}
+.card-head .logo { font-size: 1.35rem; }
+.card-head .logo span { font-size: 1.65rem; }
+.head-actions { margin-left: auto; display: flex; gap: 0.35rem; }
+.pill {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  padding: 0.32rem 0.6rem;
+  white-space: nowrap;
+}
+.pill:active { background: var(--stamp-soft); }
 
 /* ---------- score grid ---------- */
 
@@ -131,6 +153,18 @@ body {
   white-space: nowrap;
 }
 
+.bonus-caption { font-size: 0.78rem; letter-spacing: 0.14em; }
+
+/* 5–6 players: the same card without the dice illustrations */
+.grid.compact .caption { font-size: 0.62rem; letter-spacing: 0.01em; }
+.grid.compact .bonus-caption { font-size: 0.66rem; letter-spacing: 0.06em; }
+.grid.compact .rule-label { font-size: 0.68rem; letter-spacing: 0.04em; }
+.grid.compact .head .name { font-size: 1.05rem; }
+.grid.compact .head .mode-btn { font-size: 0.66rem; padding: 0.06rem 0.25rem; line-height: 1.25; }
+.grid.compact .score { font-size: 1.15rem; }
+.grid.compact .total-value { font-size: 1.2rem; }
+.grid.compact .grand .total-value { font-size: 1.35rem; }
+
 .dice-row { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
 .dice-row.grouped { gap: 5px; }
 .dice-group { display: flex; gap: 2px; align-items: center; }
@@ -190,10 +224,12 @@ button {
 }
 button.quiet {
   background: none;
-  color: var(--ink);
-  opacity: 0.65;
+  color: var(--on-linen);
+  opacity: 0.8;
   padding: 0.55rem 0.6rem;
 }
+/* inside the setup paper the quiet buttons sit on paper, not on the cloth */
+#setup button.quiet { color: var(--ink); }
 button:active { transform: translateY(1px); }
 
 /* ---------- action bar ---------- */
@@ -213,6 +249,65 @@ button:active { transform: translateY(1px); }
   box-shadow: 0 6px 18px -6px rgb(120 30 10 / 0.6);
   border-radius: 999px;
   padding: 0.75rem 1.5rem;
+}
+
+/* ---------- end of game ---------- */
+
+#result-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0.6rem calc(0.6rem + env(safe-area-inset-right)) calc(0.6rem + env(safe-area-inset-bottom));
+}
+.result-card {
+  background: linear-gradient(178deg, var(--paper), var(--paper-edge));
+  border-radius: 8px;
+  box-shadow: 0 8px 26px -8px rgb(40 30 10 / 0.6);
+  padding: 0.7rem 0.8rem;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+#result-text { font-size: 0.95rem; letter-spacing: 0.03em; }
+#result-text strong {
+  font-family: 'Caveat', cursive;
+  font-size: 1.35rem;
+  color: var(--pencil);
+  margin: 0 0.22rem;        /* the italic hand overhangs its box */
+}
+.result-actions { display: flex; gap: 0.4rem; margin-left: auto; }
+.result-actions button { font-size: 0.7rem; padding: 0.5rem 0.7rem; }
+.result-actions .secondary { background: none; border: 1px solid var(--ink); color: var(--ink); }
+
+#toast {
+  position: fixed;
+  left: 50%; bottom: 5.5rem;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
+  z-index: 5;
+}
+
+.share-text {
+  width: 100%;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.5rem;
+  resize: none;
 }
 
 /* ---------- bottom sheet ---------- */

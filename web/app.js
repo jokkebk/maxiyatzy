@@ -124,6 +124,7 @@ function activePlayerIndex() {
 // per-player play modes, cycled by the header/setup buttons
 const MODES = ['pen', 'assist', 'peek'];
 const MODE_LABEL = { pen: 'kynä', assist: '✨ apuri', peek: '👁 kurkista' };
+const MODE_ICON = { pen: '✏️', assist: '✨', peek: '👁' };
 const nextMode = m => MODES[(MODES.indexOf(m) + 1) % MODES.length];
 // tolerate the older { assist: bool } shape saved before modes existed
 const normalizeMode = p => p.mode ?? (p.assist ? 'assist' : 'pen');
@@ -180,18 +181,31 @@ function render() {
   const totals = game.players.map(p => grandTotalOf(p.card));
   const best = Math.max(...totals);
 
-  let html = `<div class="card-logo"><span class="logo">maxi<span>Yatzy</span></span></div>`;
-  html += `<div class="grid" style="grid-template-columns:minmax(8.6rem,2.45fr) repeat(${n},minmax(2.3rem,1fr))">`;
+  // game-level controls live on top of the card, where they are always in
+  // reach — the page is taller than a phone screen, so a footer scrolls away.
+  let html = `<div class="card-head">
+    <span class="logo">maxi<span>Yatzy</span></span>
+    <span class="head-actions">
+      ${undoStack.length ? `<button class="pill" data-action="undo">↩ peru</button>` : ''}
+      <button class="pill" data-action="new-game">uusi peli</button>
+    </span>
+  </div>`;
+  // five or six columns no longer fit a phone next to the dice illustrations,
+  // so those rows drop to the caption alone and the mode button to its glyph
+  const compact = n >= 5;
+  html += `<div class="grid${compact ? ' compact' : ''}" style="grid-template-columns:minmax(${
+    compact ? '5.4rem,1.5fr' : '8.6rem,2.45fr'}) repeat(${n},minmax(2.1rem,1fr))">`;
 
   html += `<div class="cell head"></div>`;
   game.players.forEach((p, i) => {
     html += `<div class="cell head mode-${p.mode}${i === active ? ' col-active' : ''}">
       <span class="name">${escapeHtml(p.name)}</span>
-      <button class="mode-btn" data-player="${i}" data-action="cycle-mode">${MODE_LABEL[p.mode]}</button></div>`;
+      <button class="mode-btn" data-player="${i}" data-action="cycle-mode">${
+        compact ? MODE_ICON[p.mode] : MODE_LABEL[p.mode]}</button></div>`;
   });
 
   const row = (cat) => {
-    html += `<div class="cell label">${diceRow(cat)}<span class="caption">${FI[cat]}</span></div>`;
+    html += `<div class="cell label">${compact ? '' : diceRow(cat)}<span class="caption">${FI[cat]}</span></div>`;
     game.players.forEach((p, i) => {
       const value = p.card[cat];
       const open = value === null;
@@ -211,7 +225,7 @@ function render() {
   });
   html += `</div>`;
 
-  html += `<div class="cell label"><span class="caption" style="font-size:0.78rem;letter-spacing:0.14em">Bonus +50</span></div>`;
+  html += `<div class="cell label"><span class="caption bonus-caption">Bonus +50</span></div>`;
   game.players.forEach((p, i) => {
     const upperDone = p.card.slice(0, 6).every(v => v !== null);
     const mark = bonusOf(p.card) ? '50' : (upperDone ? '—' : '');
@@ -229,8 +243,8 @@ function render() {
   html += `</div></div>`;
 
   card.innerHTML = html;
-  $('undo-button').hidden = undoStack.length === 0;
-  $('add-player-button').hidden = n >= 6;
+  $('add-player-button').hidden = n >= 6 || over;
+  $('share-button').hidden = over;      // the result card carries its own
 
   const bar = $('action-bar');
   if (!over && game.players[active].mode !== 'pen') {
@@ -240,12 +254,96 @@ function render() {
   } else {
     bar.hidden = true;
   }
+
+  // finished game: say so and offer the two things you want next
+  $('result-bar').hidden = !over;
+  if (over) {
+    const winners = game.players.filter((_, i) => totals[i] === best).map(p => p.name);
+    $('result-text').innerHTML = n === 1
+      ? `Peli päättyi — <strong>${best}</strong> pistettä`
+      : (winners.length > 1
+        ? `🤝 Tasapeli: <strong>${escapeHtml(winners.join(' & '))}</strong> ${best}`
+        : `🏆 <strong>${escapeHtml(winners[0])}</strong> voitti ${best} pisteellä`);
+  }
 }
 
 function escapeHtml(text) {
   return text.replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c]);
+}
+
+// ---------- sharing the finished card ----------
+
+let toastTimer = null;
+
+function toast(message) {
+  const box = $('toast');
+  box.textContent = message;
+  box.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { box.hidden = true; }, 2600);
+}
+
+// A plain-text rendition of the card: the ranking first (readable in any
+// font) and then the column layout, which lines up wherever the receiving
+// app uses a monospace font.
+function scorecardText() {
+  const players = game.players;
+  const totals = players.map(p => grandTotalOf(p.card));
+  const done = activePlayerIndex() === -1;
+  const short = p => (p.name.length > 7 ? p.name.slice(0, 7) : p.name);
+  const width = Math.max(5, ...players.map(p => short(p).length + 1));
+  const LABEL = 12;
+  const col = v => String(v).padStart(width);
+  const cell = v => col(v === null ? '·' : (v === 0 ? '–' : v));
+
+  const lines = [`maxiYatzy · ${new Date().toLocaleDateString('fi-FI')}`, ''];
+  players
+    .map((p, i) => ({ name: p.name, total: totals[i] }))
+    .sort((a, b) => b.total - a.total)
+    .forEach((r, rank, all) => {
+      const lead = done && r.total === all[0].total ? '🏆' : `${rank + 1}.`;
+      lines.push(`${lead} ${r.name} — ${r.total}`);
+    });
+  lines.push('', ''.padEnd(LABEL) + players.map(p => col(short(p))).join(''));
+
+  const rows = cats => cats.forEach(cat =>
+    lines.push(FI[cat].padEnd(LABEL) + players.map(p => cell(p.card[cat])).join('')));
+  rows([0, 1, 2, 3, 4, 5]);
+  lines.push('Yläosa'.padEnd(LABEL) + players.map(p => col(upperTotalOf(p.card))).join(''));
+  lines.push('Bonus'.padEnd(LABEL) + players.map(p => col(bonusOf(p.card) || '–')).join(''));
+  rows([...Array(CATEGORY_COUNT - 6).keys()].map(i => i + 6));
+  lines.push('YHTEENSÄ'.padEnd(LABEL) + players.map((_, i) => col(totals[i])).join(''));
+  if (!done) lines.push('', '(peli kesken)');
+  return lines.join('\n');
+}
+
+async function shareScorecard() {
+  const text = scorecardText();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Maxi Yatzy', text });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;   // user dismissed the sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('tulokset kopioitu leikepöydälle');
+  } catch {
+    showShareSheet(text);   // no clipboard (insecure origin): let them copy it
+  }
+}
+
+function showShareSheet(text) {
+  $('sheet').innerHTML = `<div class="sheet-title">Tulokset</div>
+    <p class="sheet-sub">Kopioi teksti ja liitä se minne haluat.</p>
+    <textarea class="share-text" readonly rows="16">${escapeHtml(text)}</textarea>
+    <div class="sheet-actions"><button data-action="cancel">Sulje</button></div>`;
+  showSheet();
+  $('sheet').querySelector('.share-text').select();
 }
 
 // ---------- manual score entry ----------
@@ -565,7 +663,23 @@ function openSetup({ keepScores = false } = {}) {
   renderSetup(players);
   $('setup-title').textContent = keepScores ? 'Lisää pelaaja' : 'Pelaajat';
   $('start-game').textContent = keepScores ? 'Jatka' : 'Aloita peli';
+  // backing out must be possible: the setup screen covers a game that is
+  // still intact until "Aloita peli" is pressed
+  $('cancel-setup').hidden = !game;
+  const unfinished = !keepScores && game
+    && game.players.some(p => filledCount(p.card)) && activePlayerIndex() !== -1;
+  $('setup-hint').textContent = keepScores
+    ? 'Uusi pelaaja aloittaa tyhjästä kortista.'
+    : (unfinished
+      ? 'Kesken oleva peli korvataan — peru-napilla saa sen takaisin.'
+      : 'Valitse ✨ niille, jotka haluavat apurin.');
   $('setup').hidden = false;
+}
+
+function closeSetup() {
+  if (!game) return;      // nothing to go back to
+  $('setup').hidden = true;
+  render();
 }
 
 function renderSetup(players) {
@@ -609,6 +723,12 @@ document.addEventListener('click', event => {
 
   if (action === 'enter') {
     openManualEntry(Number(target.dataset.player), Number(target.dataset.cat));
+  } else if (action === 'new-game') {
+    openSetup();
+  } else if (action === 'undo') {
+    undo();
+  } else if (action === 'share') {
+    shareScorecard();
   } else if (action === 'cycle-mode') {
     const p = game.players[Number(target.dataset.player)];
     p.mode = nextMode(p.mode);
@@ -637,7 +757,10 @@ document.addEventListener('click', event => {
 // physical keyboard for the manual numpad (desktop): digits build the number,
 // Enter confirms, Backspace deletes, Escape cancels. Quick-select chips still work.
 document.addEventListener('keydown', event => {
-  if (!manual) return;
+  if (!manual) {
+    if (event.key === 'Escape' && !$('setup').hidden) closeSetup();
+    return;
+  }
   const k = event.key;
   if (k >= '0' && k <= '9') {
     if (manual.typed.length < 3) manual.typed += k;
@@ -666,14 +789,14 @@ $('assist-button').addEventListener('click', event => {
   startAssistTurn(Number(event.currentTarget.dataset.player));
 });
 
-$('undo-button').addEventListener('click', () => {
+function undo() {
   if (!undoStack.length) return;
   game.players = JSON.parse(undoStack.pop());
   save();
   render();
-});
+}
 
-$('new-game-button').addEventListener('click', () => openSetup());
+$('cancel-setup').addEventListener('click', closeSetup);
 
 $('add-player-button').addEventListener('click', () => openSetup({ keepScores: true }));
 
@@ -693,8 +816,15 @@ $('start-game').addEventListener('click', () => {
     card: Array.isArray(p.card) ? p.card : Array(CATEGORY_COUNT).fill(null),
   }));
   if (!players.length) return;
-  if (keeping) pushUndo();            // adding mid-game stays undoable
-  else undoStack = [];
+  if (keeping) {
+    pushUndo();                       // adding mid-game stays undoable
+  } else {
+    // starting over drops the history, but the game being replaced goes on
+    // the empty stack so one "peru" brings it back
+    const replacing = game && game.players.some(p => filledCount(p.card));
+    undoStack = [];
+    if (replacing) pushUndo();
+  }
   game = { players };
   save();
   $('setup').hidden = true;
@@ -705,13 +835,13 @@ $('start-game').addEventListener('click', () => {
 
 {
   const saved = load();
-  if (saved && saved.players.some(p => filledCount(p.card) < CATEGORY_COUNT)) {
+  if (saved) {
+    // a finished game is restored too, so the final card can still be read
+    // and shared; "uusi peli" starts the next one
     game = { players: saved.players };
     undoStack = saved.undo;               // keep undo working across a reload
     render();
   } else {
-    game = saved ? { players: saved.players } : null;
-    if (game) render();
     openSetup();
   }
   probeTable();

@@ -13,6 +13,9 @@
 - **Post-game review.** For assisted players the data is already there to
   report EV lost per turn; for a trainer mode, let a manual player enter dice
   too and grade their choices afterwards.
+- **Share as an image.** `jaa tulokset` shares a plain-text card, which only
+  lines up in a monospace font; rendering the paper card to a canvas would
+  travel better through chat apps.
 - **i18n.** Category captions and UI strings are Finnish-only; add an
   English toggle.
 

@@ -16,6 +16,18 @@ Game state persists in `localStorage`, including the undo history, so an
 accidental reload between turns loses nothing (the transient dice of an
 in-progress assisted turn are not persisted).
 
+The **uusi peli** and **↩ peru** controls sit at the top of the card, next to
+the logo. Starting over does not destroy the previous game outright: the setup
+screen can be dismissed with *peruuta*, and after confirming, one *peru*
+brings the replaced card back. With five or six players the dice
+illustrations are dropped from the category labels so all columns fit a phone
+screen.
+
+When the last cell is filled, a result bar names the winner and offers **jaa
+tulokset**, which hands a plain-text scorecard (ranking plus the full table)
+to the system share sheet, or copies it to the clipboard where
+`navigator.share` is unavailable.
+
 ## Deployment
 
 Copy these files plus the **decompressed** value table to any static host:
@@ -70,7 +82,7 @@ the real `table.js`/`engine.js`, feeding `table.js` the whole file through a
 ## Files
 
 - `index.html`, `style.css`, `app.js` — UI: paper-scorecard rendering, manual
-  score entry, the assisted-turn flow, setup and persistence.
+  score entry, the assisted-turn flow, setup, sharing and persistence.
 - `engine.js` — JavaScript port of the dice/scoring/turn-evaluation logic in
   `src/policy.cpp`.
 - `table.js` — `.mytz` header parsing and range-request value loader with

@@ -15,16 +15,27 @@
 <main id="app">
   <section class="paper" id="card"></section>
   <nav class="footer">
-    <button id="undo-button" class="quiet" hidden>peru</button>
-    <span class="footer-spacer"></span>
     <button id="add-player-button" class="quiet" hidden>+ pelaaja</button>
-    <button id="new-game-button" class="quiet">uusi peli</button>
+    <span class="footer-spacer"></span>
+    <button id="share-button" class="quiet" data-action="share">jaa tulokset</button>
   </nav>
 </main>
 
 <div id="action-bar" hidden>
   <button id="assist-button"></button>
 </div>
+
+<div id="result-bar" hidden>
+  <div class="result-card">
+    <span id="result-text"></span>
+    <div class="result-actions">
+      <button data-action="share">📋 jaa tulokset</button>
+      <button class="secondary" data-action="new-game">uusi peli</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
 
 <div id="sheet-backdrop" hidden></div>
 <section id="sheet" hidden></section>
@@ -33,10 +44,12 @@
   <div class="setup-paper">
     <h1 class="logo">maxi<span>Yatzy</span></h1>
     <h2 id="setup-title" class="setup-title">Pelaajat</h2>
-    <p class="setup-hint">Valitse ✨ niille, jotka haluavat apurin.</p>
+    <p id="setup-hint" class="setup-hint">Valitse ✨ niille, jotka haluavat apurin.</p>
     <div id="setup-players"></div>
     <div class="setup-actions">
       <button id="add-player" class="quiet">+ pelaaja</button>
+      <span class="footer-spacer"></span>
+      <button id="cancel-setup" class="quiet" hidden>peruuta</button>
       <button id="start-game">Aloita peli</button>
     </div>
     <p id="table-status" class="table-status"></p>
