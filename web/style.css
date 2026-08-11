@@ -360,6 +360,8 @@ button:active { transform: translateY(1px); }
   border-bottom: 1px dotted var(--rule);
   margin-bottom: 0.7rem;
 }
+.entry-display.warn { color: var(--stamp); }
+.entry-warn { font-size: 0.78rem; color: var(--stamp); margin: -0.5rem 0 0.6rem; }
 
 .hint-line {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;

@@ -365,11 +365,16 @@ function renderManualSheet() {
     ? `<div class="chips">${values.map(v =>
         `<button data-action="chip" data-value="${v}">${v === 0 ? '—' : v}</button>`).join('')}</div>`
     : '';
+  // a typo like 7 sixes can't be scored: warn, but let it through in case
+  // the table plays some house rule
+  const typed = manual.typed === '' ? null : Number(manual.typed);
+  const impossible = typed !== null && !values.includes(typed);
   $('sheet').innerHTML = `
     <div class="sheet-title"><span class="who">${escapeHtml(p.name)}</span> ${FI[manual.cat]}${
       editing ? ` <span class="sheet-current">nyt ${current === 0 ? '—' : current}</span>` : ''}</div>
     ${chips}
-    <div class="entry-display">${manual.typed || '&nbsp;'}</div>
+    <div class="entry-display${impossible ? ' warn' : ''}">${manual.typed || '&nbsp;'}</div>
+    ${impossible ? `<p class="entry-warn">${typed} ei ole mahdollinen tulos tähän ruutuun</p>` : ''}
     <div class="numpad">
       ${[1,2,3,4,5,6,7,8,9].map(d => `<button data-action="digit" data-digit="${d}">${d}</button>`).join('')}
       <button data-action="digit" data-digit="0">0</button>
@@ -379,7 +384,7 @@ function renderManualSheet() {
     <div class="sheet-actions">
       <button class="secondary" data-action="cancel">Peruuta</button>
       ${editing ? `<button class="secondary" data-action="clear">Tyhjennä</button>` : ''}
-      <button data-action="confirm-manual">Merkitse</button>
+      <button data-action="confirm-manual">${impossible ? 'Merkitse silti' : 'Merkitse'}</button>
     </div>`;
 }
 
